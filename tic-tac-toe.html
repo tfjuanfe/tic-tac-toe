@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tic Tac Toe</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --line: #334155;
+    --x: #38bdf8;
+    --o: #fb7185;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #34d399;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at top, #1e293b, var(--bg));
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.4rem); letter-spacing: 1px; }
+
+  /* --- Auth screen --- */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 1.3rem; text-align: center; }
+  .card label { font-size: 0.8rem; color: var(--muted); }
+  .card input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+  }
+  .card input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: filter 0.15s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn-primary { background: var(--accent); color: #04221a; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; }
+  .switch { text-align: center; font-size: 0.85rem; color: var(--muted); }
+  .switch a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .msg { font-size: 0.85rem; min-height: 1.2em; text-align: center; }
+  .msg.error { color: var(--danger); }
+  .msg.ok { color: var(--accent); }
+
+  /* --- Top bar when logged in --- */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 8px 14px; font-size: 0.9rem;
+  }
+  .topbar .who { color: var(--muted); }
+  .topbar .who b { color: var(--text); }
+
+  /* --- Game --- */
+  .modes { display: flex; gap: 8px; background: var(--panel); padding: 6px; border-radius: 12px; }
+  .modes button {
+    border: none; background: transparent; color: var(--muted);
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+    transition: all 0.15s;
+  }
+  .modes button.active { background: var(--accent); color: #04221a; font-weight: 600; }
+
+  #status { font-size: clamp(1.05rem, 1.6vw, 1.3rem); min-height: 1.5em; font-weight: 500; }
+
+  .board {
+    --cell: clamp(80px, 13vmin, 120px);
+    display: grid;
+    grid-template-columns: repeat(3, var(--cell));
+    grid-template-rows: repeat(3, var(--cell));
+    gap: 12px;
+    background: var(--line);
+    padding: 12px;
+    border-radius: 18px;
+  }
+  .cell {
+    background: var(--panel);
+    border: none;
+    border-radius: 14px;
+    font-size: calc(var(--cell) * 0.55);
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.05s;
+    color: var(--text);
+  }
+  .cell:hover:not(:disabled) { background: #2b3a52; }
+  .cell:active:not(:disabled) { transform: scale(0.96); }
+  .cell.x { color: var(--x); }
+  .cell.o { color: var(--o); }
+  .cell.win { background: var(--accent); color: #04221a; }
+  .cell:disabled { cursor: default; }
+
+  .scoreboard { display: flex; gap: clamp(16px, 3vw, 28px); font-size: clamp(0.9rem, 1.3vw, 1.05rem); color: var(--muted); }
+  .scoreboard b { color: var(--text); font-size: 1.2em; }
+
+  #reset {
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    padding: 10px 24px; border-radius: 10px; cursor: pointer; font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    transition: background 0.15s;
+  }
+  #reset:hover { background: #2b3a52; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <h1>Tic&nbsp;Tac&nbsp;Toe</h1>
+
+  <!-- ===================== AUTH SCREEN ===================== -->
+  <div id="auth" class="card">
+    <h2 id="auth-title">Log In</h2>
+
+    <div>
+      <label for="username">Username</label>
+      <input id="username" type="text" autocomplete="username" />
+    </div>
+    <div>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" />
+    </div>
+
+    <div id="auth-msg" class="msg"></div>
+
+    <button id="auth-submit" class="btn btn-primary">Log In</button>
+
+    <div class="switch" id="auth-switch">
+      No account? <a id="switch-link">Create one</a>
+    </div>
+  </div>
+
+  <!-- ===================== GAME SCREEN ===================== -->
+  <div id="game" class="hidden" style="display:flex; flex-direction:column; align-items:center; gap:24px;">
+
+    <div class="topbar">
+      <span class="who">Signed in as <b id="current-user"></b></span>
+      <button id="logout" class="btn btn-ghost" style="padding:6px 12px;">Log out</button>
+    </div>
+
+    <div class="modes">
+      <button id="mode-2p" class="active">2 Players</button>
+      <button id="mode-easy">vs Easy</button>
+      <button id="mode-hard">vs Unbeatable</button>
+    </div>
+
+    <div id="status">X's turn</div>
+
+    <div class="board" id="board"></div>
+
+    <div class="scoreboard">
+      <div>X wins: <b id="score-x">0</b></div>
+      <div>Draws: <b id="score-d">0</b></div>
+      <div>O wins: <b id="score-o">0</b></div>
+    </div>
+
+    <button id="reset">New Game</button>
+  </div>
+
+<script>
+/* =======================================================================
+   LOGIN SYSTEM  (client-side, localStorage — not real security)
+   Accounts and per-user scores live in the browser only.
+   ======================================================================= */
+const USERS_KEY = "ttt_users";
+const SESSION_KEY = "ttt_session";
+
+const authEl = document.getElementById("auth");
+const gameEl = document.getElementById("game");
+const authTitle = document.getElementById("auth-title");
+const authSubmit = document.getElementById("auth-submit");
+const authSwitch = document.getElementById("auth-switch");
+const switchLink = document.getElementById("switch-link");
+const authMsg = document.getElementById("auth-msg");
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+const currentUserEl = document.getElementById("current-user");
+
+let authMode = "login"; // or "register"
+let currentUser = null;
+
+function loadUsers() {
+  try { return JSON.parse(localStorage.getItem(USERS_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveUsers(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
+
+// Lightweight hash so passwords aren't stored in plain text.
+// NOTE: this is obfuscation, not security — client-side only.
+async function hashPassword(pw) {
+  const data = new TextEncoder().encode(pw);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function showMsg(text, type) {
+  authMsg.textContent = text;
+  authMsg.className = "msg" + (type ? " " + type : "");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  showMsg("");
+  if (mode === "login") {
+    authTitle.textContent = "Log In";
+    authSubmit.textContent = "Log In";
+    authSwitch.innerHTML = 'No account? <a id="switch-link">Create one</a>';
+  } else {
+    authTitle.textContent = "Create Account";
+    authSubmit.textContent = "Sign Up";
+    authSwitch.innerHTML = 'Already have an account? <a id="switch-link">Log in</a>';
+  }
+  document.getElementById("switch-link").addEventListener("click", () =>
+    setAuthMode(authMode === "login" ? "register" : "login"));
+}
+
+async function handleAuth() {
+  const name = usernameInput.value.trim();
+  const pw = passwordInput.value;
+
+  if (!name || !pw) { showMsg("Enter a username and password.", "error"); return; }
+  if (name.length < 3) { showMsg("Username must be at least 3 characters.", "error"); return; }
+  if (pw.length < 4) { showMsg("Password must be at least 4 characters.", "error"); return; }
+
+  const users = loadUsers();
+  const key = name.toLowerCase();
+  const hashed = await hashPassword(pw);
+
+  if (authMode === "register") {
+    if (users[key]) { showMsg("That username is taken.", "error"); return; }
+    users[key] = { name, password: hashed, scores: { X: 0, O: 0, D: 0 } };
+    saveUsers(users);
+    showMsg("Account created! Logging you in…", "ok");
+    setTimeout(() => login(key), 500);
+  } else {
+    const user = users[key];
+    if (!user || user.password !== hashed) {
+      showMsg("Wrong username or password.", "error");
+      return;
+    }
+    login(key);
+  }
+}
+
+function login(key) {
+  currentUser = key;
+  localStorage.setItem(SESSION_KEY, key);
+  const user = loadUsers()[key];
+  currentUserEl.textContent = user.name;
+  scores = user.scores;
+  updateScores();
+  authEl.classList.add("hidden");
+  gameEl.classList.remove("hidden");
+  usernameInput.value = "";
+  passwordInput.value = "";
+  setMode("2p");
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem(SESSION_KEY);
+  gameEl.classList.add("hidden");
+  authEl.classList.remove("hidden");
+  setAuthMode("login");
+}
+
+function persistScores() {
+  if (!currentUser) return;
+  const users = loadUsers();
+  if (users[currentUser]) { users[currentUser].scores = scores; saveUsers(users); }
+}
+
+authSubmit.addEventListener("click", handleAuth);
+passwordInput.addEventListener("keydown", e => { if (e.key === "Enter") handleAuth(); });
+usernameInput.addEventListener("keydown", e => { if (e.key === "Enter") passwordInput.focus(); });
+document.getElementById("logout").addEventListener("click", logout);
+setAuthMode("login");
+
+/* =======================================================================
+   GAME
+   ======================================================================= */
+const boardEl = document.getElementById("board");
+const statusEl = document.getElementById("status");
+const scoreX = document.getElementById("score-x");
+const scoreO = document.getElementById("score-o");
+const scoreD = document.getElementById("score-d");
+
+let board, current, gameOver, mode;
+let scores = { X: 0, O: 0, D: 0 };
+
+const WINS = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+function init() {
+  board = Array(9).fill("");
+  current = "X";
+  gameOver = false;
+  boardEl.innerHTML = "";
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement("button");
+    cell.className = "cell";
+    cell.dataset.index = i;
+    cell.addEventListener("click", () => handleMove(i));
+    boardEl.appendChild(cell);
+  }
+  setStatus(`${current}'s turn`);
+}
+
+function setStatus(msg) { statusEl.textContent = msg; }
+function cellAt(i) { return boardEl.children[i]; }
+
+function handleMove(i) {
+  if (gameOver || board[i]) return;
+  if (mode !== "2p" && current === "O") return;
+  place(i, current);
+  if (!gameOver && mode !== "2p" && current === "O") {
+    setTimeout(computerMove, 350);
+  }
+}
+
+function place(i, player) {
+  board[i] = player;
+  const cell = cellAt(i);
+  cell.textContent = player;
+  cell.classList.add(player.toLowerCase());
+  cell.disabled = true;
+
+  const winLine = getWinner(board);
+  if (winLine) {
+    gameOver = true;
+    winLine.forEach(idx => cellAt(idx).classList.add("win"));
+    scores[player]++;
+    updateScores();
+    persistScores();
+    setStatus(`${player} wins! 🎉`);
+    disableAll();
+    return;
+  }
+  if (board.every(c => c)) {
+    gameOver = true;
+    scores.D++;
+    updateScores();
+    persistScores();
+    setStatus("It's a draw!");
+    return;
+  }
+  current = player === "X" ? "O" : "X";
+  setStatus(`${current}'s turn`);
+}
+
+function disableAll() { for (const c of boardEl.children) c.disabled = true; }
+
+function updateScores() {
+  scoreX.textContent = scores.X;
+  scoreO.textContent = scores.O;
+  scoreD.textContent = scores.D;
+}
+
+function getWinner(b) {
+  for (const line of WINS) {
+    const [a, c, d] = line;
+    if (b[a] && b[a] === b[c] && b[a] === b[d]) return line;
+  }
+  return null;
+}
+
+function computerMove() {
+  if (gameOver) return;
+  const empty = board.map((v, i) => v ? null : i).filter(i => i !== null);
+  if (!empty.length) return;
+  let choice;
+  if (mode === "easy") {
+    choice = empty[Math.floor(Math.random() * empty.length)];
+  } else {
+    choice = bestMove();
+  }
+  place(choice, "O");
+}
+
+function bestMove() {
+  let best = -Infinity, move;
+  for (let i = 0; i < 9; i++) {
+    if (!board[i]) {
+      board[i] = "O";
+      const score = minimax(board, 0, false);
+      board[i] = "";
+      if (score > best) { best = score; move = i; }
+    }
+  }
+  return move;
+}
+
+function minimax(b, depth, isMax) {
+  const win = getWinner(b);
+  if (win) return b[win[0]] === "O" ? 10 - depth : depth - 10;
+  if (b.every(c => c)) return 0;
+  if (isMax) {
+    let best = -Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) { b[i] = "O"; best = Math.max(best, minimax(b, depth + 1, false)); b[i] = ""; }
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) { b[i] = "X"; best = Math.min(best, minimax(b, depth + 1, true)); b[i] = ""; }
+    }
+    return best;
+  }
+}
+
+const modeButtons = {
+  "2p": document.getElementById("mode-2p"),
+  "easy": document.getElementById("mode-easy"),
+  "hard": document.getElementById("mode-hard"),
+};
+function setMode(m) {
+  mode = m;
+  for (const key in modeButtons) modeButtons[key].classList.toggle("active", key === m);
+  init();
+}
+modeButtons["2p"].addEventListener("click", () => setMode("2p"));
+modeButtons["easy"].addEventListener("click", () => setMode("easy"));
+modeButtons["hard"].addEventListener("click", () => setMode("hard"));
+document.getElementById("reset").addEventListener("click", init);
+
+/* =======================================================================
+   STARTUP — auto-resume an existing session if present
+   ======================================================================= */
+(function start() {
+  const saved = localStorage.getItem(SESSION_KEY);
+  if (saved && loadUsers()[saved]) {
+    login(saved);
+  } else {
+    authEl.classList.remove("hidden");
+  }
+})();
+</script>
+</body>
+</html>
